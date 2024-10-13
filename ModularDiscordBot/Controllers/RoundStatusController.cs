@@ -13,7 +13,6 @@ namespace ModularDiscordBot.Controllers;
 
 public sealed class RoundStatusController : IBotController
 {
-    private readonly DiscordSocketClient _client;
     private readonly ILogger<RoundStatusController> _logger;
     private readonly RoundStatusConfiguration _configuration;
     private readonly ByondTopic _byondTopic = new();
@@ -29,11 +28,10 @@ public sealed class RoundStatusController : IBotController
         ILogger<RoundStatusController> logger,
         RoundStatusConfiguration configuration)
     {
-        _client = client;
         _logger = logger;
         _configuration = configuration;
         
-        var channel = _client.GetChannel(_configuration.ChannelId);
+        var channel = client.GetChannel(_configuration.ChannelId);
         
         if(channel is not ITextChannel textChannel)
         {
@@ -213,30 +211,5 @@ public sealed class RoundStatusController : IBotController
         }
 
         return embedBuilder.Build();
-    }
-
-    public async Task NewThread()
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task SwitchOn()
-    {
-        throw new NotImplementedException();
-    }
-    
-    public async Task SwitchOff()
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task SetMaxRequests(int amount)
-    {
-        throw new NotImplementedException();
-    }
-    
-    public async Task ResetRequests()
-    {
-        throw new NotImplementedException();
     }
 }

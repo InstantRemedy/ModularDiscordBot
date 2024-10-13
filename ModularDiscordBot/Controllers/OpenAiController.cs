@@ -1,47 +1,106 @@
-﻿using Discord;
+﻿using System.Text;
+using Discord;
 using Discord.Commands;
-using Microsoft.Extensions.Logging;
+using Discord.Interactions;
 using ModularDiscordBot.Configuration.Configurations;
 using ModularDiscordBot.Interfaces;
+using ModularDiscordBot.Structures;
 using Newtonsoft.Json.Linq;
 using OpenAI;
+using OpenAI.Threads;
 
 namespace ModularDiscordBot.Controllers;
 
 public sealed class OpenAiController : IBotController
 {
+    public uint MaxRequests { get; set; }
+    public uint RequestAmount { get; set; }
+    public bool IsEnabled { get; set; }
+    
+    private string ExhaustedMessage =>
+        new StringBuilder()
+            .Append("Увы, мои силы иссякли, и мне нужно время на восстановление. ")
+            .Append("Скоро я буду готова к новой беседе.")
+            .ToString();
+    
+    private string UnavailableMessage =>
+            new StringBuilder()
+                .Append("Простите, но я не могу ответить на ваш вопрос. ")
+                .Append("Попробуйте позже")
+                .ToString();
+    
     private readonly OpenAIClient _openAiClient;
     private readonly OpenAiConfiguration _openAiConfiguration;
-    private readonly ILogger<OpenAiController> _logger;
     
     private IUserMessage? _currentMessage;
 
     public OpenAiController(
         OpenAIClient openAiClient,
-        OpenAiConfiguration openAiConfiguration,
-        ILogger<OpenAiController> logger)
+        OpenAiConfiguration openAiConfiguration)
     {
         _openAiClient = openAiClient;
         _openAiConfiguration = openAiConfiguration;
-        _logger = logger;
     }
     
     public async Task MindAsync(string prompt, SocketCommandContext context)
     {
-        await context.Channel.TriggerTypingAsync();
-        if (_openAiConfiguration.Mode == "stream")
+        if (!IsEnabled || RequestAmount >= MaxRequests)
         {
-            await MindStreamAsync(prompt, context);
+            await context.Message.ReplyAsync(ExhaustedMessage);
             return;
         }
         
-        if (_openAiConfiguration.Mode != "no_stream")
+        await context.Channel.TriggerTypingAsync();
+        
+        if (string.IsNullOrWhiteSpace(prompt))
         {
-            _openAiConfiguration.Mode = "no_stream";
-            await _openAiConfiguration.SaveConfigurationAsync();
+            var assistant = await _openAiClient.AssistantsEndpoint.RetrieveAssistantAsync(_openAiConfiguration.AssistantId);
+            var text = $"Привет! я {assistant.Name}. Чего бы {context.User.Username} хотел знать?";
+            await context.Message.ReplyAsync(text);
+            return;
         }
-            
-        await MindNoStreamAsync(prompt, context);
+        
+        switch (StreamModeHelper.FromString(_openAiConfiguration.Mode))
+        {
+            case StreamMode.Stream:
+            {
+                try
+                {
+                    await MindStreamAsync(prompt, context);
+                }
+                catch (Exception)
+                {
+                    await context.Message.ReplyAsync(UnavailableMessage);
+                }
+                break;
+            }
+            case StreamMode.NoStream:
+            {
+                try
+                {
+                    await MindNoStreamAsync(prompt, context);
+                }
+                catch (Exception)
+                {
+                    await context.Message.ReplyAsync(UnavailableMessage);
+                }
+                break;
+            }
+            default:
+            {
+                try
+                {
+                    await MindStreamAsync(prompt, context);
+                }
+                catch (Exception)
+                {
+                    await context.Message.ReplyAsync(UnavailableMessage);
+                }
+                break;
+            }
+        }
+        
+        RequestAmount++;
     }
     
     #region MindStream
@@ -102,7 +161,7 @@ public sealed class OpenAiController : IBotController
     }
     #endregion
     
-    #region MindMessage
+    #region MindNoSteam
     private async Task MindNoStreamAsync(string prompt, SocketCommandContext context)
     {
         var formattedPrompt = $"{context.User.Username}:{prompt}";
@@ -148,5 +207,17 @@ public sealed class OpenAiController : IBotController
         
         return jObject.Value<string>("id")!;
     }
+    #endregion
+
+    #region Interaction
+
+    public async Task CreateNewThreadAsync(SocketInteractionContext context)
+    {
+        await _openAiClient.ThreadsEndpoint.DeleteThreadAsync(_openAiConfiguration.ThreadId);
+        var thread = await _openAiClient.ThreadsEndpoint.CreateThreadAsync();
+        _openAiConfiguration.ThreadId = thread.Id;
+        await _openAiConfiguration.SaveConfigurationAsync();
+    }
+    
     #endregion
 }

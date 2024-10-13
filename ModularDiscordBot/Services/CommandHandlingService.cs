@@ -50,16 +50,16 @@ public class CommandHandlingService : ModularDiscordBotService
         await commandContext.Channel.SendMessageAsync(result.ErrorReason);
     }
 
-    private async Task OnMessageReceived(SocketMessage socketMessage)
+    private Task OnMessageReceived(SocketMessage socketMessage)
     {
         if (!(socketMessage is SocketUserMessage message))
         {
-            return;
+            return Task.CompletedTask;
         }
 
         if (message.Source != MessageSource.User)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         // Добавляем сообщение в очередь
@@ -71,6 +71,8 @@ public class CommandHandlingService : ModularDiscordBotService
             _isProcessingQueue = true;
             _ = ProcessMessageQueue();
         }
+        
+        return Task.CompletedTask;
     }
 
     private async Task ProcessMessageQueue()

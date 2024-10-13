@@ -13,7 +13,7 @@ public sealed class OpenAiCommandModule : ModuleBase<SocketCommandContext>
     }
     
     [Command("mind")]
-    private async Task Mind([Remainder] string prompt)
+    private async Task Mind([Remainder] string prompt = "")
     {
         await _openAiController.MindAsync(prompt, Context);
     }

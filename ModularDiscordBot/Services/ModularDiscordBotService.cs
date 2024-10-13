@@ -8,9 +8,9 @@ namespace ModularDiscordBot.Services;
 
 public abstract class ModularDiscordBotService : DiscordClientService
 {
-    public DiscordSocketClient Client { get; }
-    public ILogger<DiscordClientService> Logger { get; }
-    public BotConfiguration BotConfiguration { get; }
+    protected new DiscordSocketClient Client { get; }
+    protected new ILogger<DiscordClientService> Logger { get; }
+    protected new BotConfiguration BotConfiguration { get; }
     
     protected ModularDiscordBotService(
         DiscordSocketClient client, 
