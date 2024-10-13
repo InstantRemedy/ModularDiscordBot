@@ -1,0 +1,12 @@
+﻿{
+    "main_role_id" : 1234567890,
+    "allowed_role_ids" : [
+        1234567890,
+        1234567890
+    ],
+    "api_key": "sk-1234567890",
+    "assistant_id": "asst_1234567890",
+    "organization_id": "org_1234567890",
+    "project_id": "proj_1234567890",
+    "thread_id": "thrd_1234567890"
+}

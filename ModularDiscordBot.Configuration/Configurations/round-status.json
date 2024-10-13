@@ -1,0 +1,10 @@
+﻿{
+    "host" : "localhost",
+    "port" : 27017,
+    "channel_id" : 1234567890,
+    "main_role_id" : 1234567890,
+    "allowed_role_ids" : [
+        1234567890,
+        1234567890
+    ]
+}
