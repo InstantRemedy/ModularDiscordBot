@@ -1,13 +1,13 @@
-﻿using System.Text;
+using System.Text;
 using Discord;
 using Discord.Commands;
 using Discord.Interactions;
+using Discord.WebSocket;
 using ModularDiscordBot.Configuration.Configurations;
 using ModularDiscordBot.Interfaces;
 using ModularDiscordBot.Structures;
 using Newtonsoft.Json.Linq;
 using OpenAI;
-using OpenAI.Threads;
 
 namespace ModularDiscordBot.Controllers;
 
@@ -29,15 +29,18 @@ public sealed class OpenAiController : IBotController
                 .Append("Попробуйте позже")
                 .ToString();
     
+    private readonly DiscordSocketClient _client;
     private readonly OpenAIClient _openAiClient;
     private readonly OpenAiConfiguration _openAiConfiguration;
     
     private IUserMessage? _currentMessage;
 
     public OpenAiController(
+        DiscordSocketClient client,
         OpenAIClient openAiClient,
         OpenAiConfiguration openAiConfiguration)
     {
+        _client = client;
         _openAiClient = openAiClient;
         _openAiConfiguration = openAiConfiguration;
     }
@@ -88,19 +91,16 @@ public sealed class OpenAiController : IBotController
             }
             default:
             {
-                try
-                {
-                    await MindStreamAsync(prompt, context);
-                }
-                catch (Exception)
-                {
-                    await context.Message.ReplyAsync(UnavailableMessage);
-                }
-                break;
+                throw new ArgumentOutOfRangeException();
             }
         }
         
         RequestAmount++;
+        
+        if (RequestAmount >= MaxRequests)
+        {
+            await _client.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Off));
+        }
     }
     
     #region MindStream
@@ -217,6 +217,42 @@ public sealed class OpenAiController : IBotController
         var thread = await _openAiClient.ThreadsEndpoint.CreateThreadAsync();
         _openAiConfiguration.ThreadId = thread.Id;
         await _openAiConfiguration.SaveConfigurationAsync();
+    }
+    
+    public async Task Enbale()
+    {
+        IsEnabled = true;
+        
+        if (IsEnabled && RequestAmount < MaxRequests)
+        {
+            await _client.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Ready));
+        }
+    }
+    
+    public async Task Disable()
+    {
+        IsEnabled = false;
+        await _client.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Off));
+    }
+    
+    public async Task SetMaxRequests(uint maxRequests)
+    {
+        MaxRequests = maxRequests;
+        
+        if (MaxRequests != 0 && IsEnabled)
+        {
+            await _client.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Ready));
+        }
+    }
+    
+    public async Task ResetRequests()
+    {
+        RequestAmount = 0;
+        
+        if (MaxRequests != 0 && IsEnabled)
+        {
+            await _client.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Ready));
+        }
     }
     
     #endregion

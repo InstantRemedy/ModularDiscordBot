@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +8,7 @@ using System;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using ModularDiscordBot.Structures;
 
 namespace ModularDiscordBot.Services;
 
@@ -16,15 +17,18 @@ public class InteractionHandlingService : IHostedService
     private readonly DiscordSocketClient _discord;
     private readonly InteractionService _interactions;
     private readonly IServiceProvider _services;
+    private readonly ILogger<InteractionHandlingService> _logger;
 
     public InteractionHandlingService(
         DiscordSocketClient discord,
         InteractionService interactions,
-        IServiceProvider services)
+        IServiceProvider services,
+        ILogger<InteractionHandlingService> logger)
     {
         _discord = discord;
         _interactions = interactions;
         _services = services;
+        _logger = logger;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -40,6 +44,8 @@ public class InteractionHandlingService : IHostedService
             {
                 await _interactions.RegisterCommandsToGuildAsync(guild.Id, true);
             }
+
+            await _discord.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Off));
         };
         _discord.InteractionCreated += OnInteractionAsync;
     }
@@ -58,7 +64,9 @@ public class InteractionHandlingService : IHostedService
             var result = await _interactions.ExecuteCommandAsync(context, _services);
 
             if (!result.IsSuccess)
-                await context.Channel.SendMessageAsync(result.ToString());
+            {
+                _logger.LogError(result.ErrorReason);
+            }
         }
         catch
         {

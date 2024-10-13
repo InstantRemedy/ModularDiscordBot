@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Reflection;
 using Discord;
 using Discord.Addons.Hosting;
@@ -40,14 +40,14 @@ public class CommandHandlingService : ModularDiscordBotService
         await _service.AddModulesAsync(Assembly.GetEntryAssembly(), _provider);
     }
 
-    private async Task OnCommandExecuted(Optional<CommandInfo> commandInfo, ICommandContext commandContext, IResult result)
+    private Task OnCommandExecuted(Optional<CommandInfo> commandInfo, ICommandContext commandContext, IResult result)
     {
-        if (result.IsSuccess)
+        if (!result.IsSuccess)
         {
-            return;
+            Logger.LogError(result.ErrorReason);
         }
         
-        await commandContext.Channel.SendMessageAsync(result.ErrorReason);
+        return Task.CompletedTask;
     }
 
     private Task OnMessageReceived(SocketMessage socketMessage)

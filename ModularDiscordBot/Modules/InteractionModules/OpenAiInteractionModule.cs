@@ -1,4 +1,4 @@
-﻿using Discord.Interactions;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
 using ModularDiscordBot.Configuration.Configurations;
@@ -10,15 +10,18 @@ namespace ModularDiscordBot.Modules.InteractionModules;
 
 public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketInteractionContext>
 {
+    private readonly DiscordSocketClient _client;
     private readonly OpenAiController _openAiController;
     private readonly OpenAiConfiguration _openAiConfiguration;
     private readonly ILogger<OpenAiInteractionModule> _logger;
     
     public OpenAiInteractionModule(
+        DiscordSocketClient client,
         OpenAiController openAiController,
         OpenAiConfiguration openAiConfiguration,
         ILogger<OpenAiInteractionModule> logger)
     {
+        _client = client;
         _openAiController = openAiController;
         _openAiConfiguration = openAiConfiguration;
         _logger = logger;
@@ -169,8 +172,7 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            _openAiController.MaxRequests = maxRequests;
-            _openAiController.RequestAmount = 0;
+            await _openAiController.SetMaxRequests(maxRequests);
             
             await FollowupAsync($"Max requests set: {maxRequests}", ephemeral: true);
         }
@@ -196,8 +198,7 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            _openAiController.RequestAmount = 0;
-            
+            await _openAiController.ResetRequests();
             await FollowupAsync("Requests reset", ephemeral: true);
         }
         catch (Exception ex)
@@ -222,7 +223,7 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            _openAiController.IsEnabled = true;
+            await _openAiController.Enbale();
             
             await FollowupAsync("OpenAI enabled", ephemeral: true);
         }
@@ -248,7 +249,7 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            _openAiController.IsEnabled = false;
+            await _openAiController.Disable();
             
             await FollowupAsync("OpenAI disabled", ephemeral: true);
         }
@@ -283,5 +284,4 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
             await FollowupAsync("Error assigning new thread", ephemeral: true);
         }
     }
-        
 }

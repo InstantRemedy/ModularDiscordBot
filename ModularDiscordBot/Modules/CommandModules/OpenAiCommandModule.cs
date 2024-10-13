@@ -1,4 +1,4 @@
-﻿using Discord.Commands;
+using Discord.Commands;
 using ModularDiscordBot.Controllers;
 
 namespace ModularDiscordBot.Modules.CommandModules;

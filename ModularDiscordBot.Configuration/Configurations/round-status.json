@@ -1,4 +1,4 @@
-﻿{
+{
     "host" : "localhost",
     "port" : 27017,
     "channel_id" : 1234567890,

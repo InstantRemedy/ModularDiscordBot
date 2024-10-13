@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Discord.WebSocket;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

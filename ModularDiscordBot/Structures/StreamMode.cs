@@ -1,4 +1,4 @@
-﻿namespace ModularDiscordBot.Structures;
+namespace ModularDiscordBot.Structures;
 
 public enum StreamMode
 {
