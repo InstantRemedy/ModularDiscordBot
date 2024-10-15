@@ -182,7 +182,8 @@ public sealed class ByondTopic
         int totalRead = 0;
         while (totalRead < count)
         {
-            int bytesRead = await stream.ReadAsync(buffer, offset + totalRead, count - totalRead);
+            CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            int bytesRead = await stream.ReadAsync(buffer, offset + totalRead, count - totalRead, cts.Token);
             if (bytesRead == 0)
             {
                 break; // Конец потока

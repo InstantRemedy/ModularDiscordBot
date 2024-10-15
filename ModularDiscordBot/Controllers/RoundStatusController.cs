@@ -19,6 +19,7 @@ public sealed class RoundStatusController : IBotController
     
     private ITextChannel? _channel;
     private IUserMessage? _embedMessage;
+    private IUserMessage? _newRoundMessage;
     private GameState _lastGameState = GameState.Unknown;
     private bool _isInitialized;
     private int _failedAttempts;
@@ -88,27 +89,7 @@ public sealed class RoundStatusController : IBotController
         catch (Exception e)
         {
             _logger.LogError($"Failed to query round status: {e.Message}");
-            
-            _failedAttempts++;
-
-            if (_failedAttempts >= 5)
-            {
-                _isInitialized = false;
-                _failedAttempts = 0;
-                
-                if(_lastGameState != GameState.EndGame && 
-                   _lastGameState != GameState.Unknown)
-                {
-                    _lastGameState = GameState.Unknown;
-
-                    if (_embedMessage is not null)
-                    {
-                        await _embedMessage.DeleteAsync();
-                        _embedMessage = null;
-                    }
-                }
-            }
-            
+            await HandleQueryException();
             return null;
         }
     }
@@ -128,6 +109,35 @@ public sealed class RoundStatusController : IBotController
             _logger.LogInformation($"Game state: {gameState.ToFriendlyString()}");
         }
     }
+
+    private async Task HandleQueryException()
+    {
+        _failedAttempts++;
+
+        if (_failedAttempts >= 5)
+        {
+            _isInitialized = false;
+            _failedAttempts = 0;
+                
+            if(_lastGameState != GameState.EndGame && 
+               _lastGameState != GameState.Unknown)
+            {
+                _lastGameState = GameState.Unknown;
+
+                if (_embedMessage is not null)
+                {
+                    await _embedMessage.DeleteAsync();
+                    _embedMessage = null;
+                }
+
+                if (_newRoundMessage is not null)
+                {
+                    await _newRoundMessage.DeleteAsync();
+                    _newRoundMessage = null;
+                }
+            }
+        }
+    }
     
     private async Task CreateOrModifyMessageAsync(Embed embed, GameState gameState)
     {
@@ -137,7 +147,7 @@ public sealed class RoundStatusController : IBotController
              _lastGameState == GameState.EndGame))
         {
             _embedMessage = await _channel!.SendMessageAsync(embed: embed);
-            await _channel.SendMessageAsync(
+            _newRoundMessage = await _channel.SendMessageAsync(
                 "<@&1227295722123296799> Новый раунд```byond://rockhill-game.ru:51143```");
             _isInitialized = true;
         }
