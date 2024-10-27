@@ -4,7 +4,7 @@ using ModularDiscordBot.Interfaces;
 
 namespace ModularDiscordBot.Ioc;
 
-public static class ServiceCollectionControllersExtenstions
+public static class ServiceCollectionControllersExtensions
 {
     public static IServiceCollection AddControllers(this IServiceCollection services)
     {

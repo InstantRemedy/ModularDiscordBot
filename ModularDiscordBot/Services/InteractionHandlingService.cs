@@ -1,13 +1,9 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using ModularDiscordBot.Structures;
 
 namespace ModularDiscordBot.Services;
@@ -42,10 +38,10 @@ public class InteractionHandlingService : IHostedService
 
             foreach (var guild in _discord.Guilds)
             {
-                await _interactions.RegisterCommandsToGuildAsync(guild.Id, true);
+                await _interactions.RegisterCommandsToGuildAsync(guild.Id);
             }
 
-            await _discord.SetCustomStatusAsync(BotStatusHelper.ToStatusString(BotStatus.Off));
+            await _discord.SetCustomStatusAsync(BotStatus.Off.ToStatusString());
         };
         _discord.InteractionCreated += OnInteractionAsync;
     }

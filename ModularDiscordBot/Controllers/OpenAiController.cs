@@ -111,14 +111,18 @@ public sealed class OpenAiController : IBotController
             threadId: _openAiConfiguration.ThreadId,
             message: new OpenAI.Threads.Message(formattedPrompt));
 
-        _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
-            threadId: _openAiConfiguration.ThreadId,
-            request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
-            streamEventHandler: async (sentEvent) => await HandleStreamResponse(sentEvent, context),
-            cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(5)).Token);
-        
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)))
+        {
+            _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
+                threadId: _openAiConfiguration.ThreadId,
+                request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
+                streamEventHandler: async (sentEvent) => await HandleStreamResponse(sentEvent, context),
+                cancellationToken: cts.Token);
+        }
+
         _currentMessage = null;
     }
+
     
     private async Task HandleStreamResponse(IServerSentEvent sentEvent, SocketCommandContext context)
     {
@@ -170,18 +174,22 @@ public sealed class OpenAiController : IBotController
             message: new OpenAI.Threads.Message(formattedPrompt));
 
         var messageId = string.Empty;
-        _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
-            threadId: _openAiConfiguration.ThreadId,
-            request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
-            streamEventHandler: serverSent =>
-            {
-                if(string.IsNullOrWhiteSpace(messageId))
+        
+        using (var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)))
+        {
+            _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
+                threadId: _openAiConfiguration.ThreadId,
+                request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
+                streamEventHandler: serverSent =>
                 {
-                    messageId = GetMessageId(serverSent);
-                }
-                return Task.CompletedTask;
-            },
-            cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(5)).Token);
+                    if(string.IsNullOrWhiteSpace(messageId))
+                    {
+                        messageId = GetMessageId(serverSent);
+                    }
+                    return Task.CompletedTask;
+                },
+                cancellationToken: cts.Token);
+        }
         
         var message = 
             await _openAiClient.ThreadsEndpoint.RetrieveMessageAsync(

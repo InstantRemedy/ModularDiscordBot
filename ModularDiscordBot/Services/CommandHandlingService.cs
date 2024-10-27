@@ -16,7 +16,7 @@ public class CommandHandlingService : ModularDiscordBotService
     private readonly DiscordSocketClient _client;
     private readonly CommandService _service;
     private readonly ConcurrentQueue<SocketMessage> _messageQueue = new();
-    private bool _isProcessingQueue = false;
+    private bool _isProcessingQueue;
     
     public CommandHandlingService(
         IServiceProvider provider, 
@@ -85,7 +85,6 @@ public class CommandHandlingService : ModularDiscordBotService
             }
 
             var argPos = 0;
-            var user = message.Author as SocketGuildUser;
             var prefix = BotConfiguration.CommandPrefix;
             if (!message.HasStringPrefix(prefix, ref argPos) && !message.HasMentionPrefix(_client.CurrentUser, ref argPos))
             {

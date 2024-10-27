@@ -49,9 +49,9 @@ public class LoopHandlingService : BackgroundService
             tcs.SetResult(true);
             return Task.CompletedTask;
         }
-
+        
         _client.Ready += ClientReady;
-
+        
         try
         {
             await tcs.Task.WaitAsync(stoppingToken);
