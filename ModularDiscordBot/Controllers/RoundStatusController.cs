@@ -23,7 +23,7 @@ public sealed class RoundStatusController : IBotController
     private GameState _lastGameState = GameState.Unknown;
     private bool _isInitialized;
     private int _failedAttempts;
-
+    
     public RoundStatusController(
         DiscordSocketClient client,
         ILogger<RoundStatusController> logger,
@@ -65,7 +65,10 @@ public sealed class RoundStatusController : IBotController
 
         var currentTime = int.Parse(roundDurationToken);
         var gameState = (GameState)Enum.Parse(typeof(GameState), gameStateToken, true);
-        var embed = MakeEmbed(data, currentTime, gameState);
+
+        var status = ByoundStatusHelper.FromQuery(data);
+        
+        var embed = MakeEmbed(status);
         
         LogState(currentTime, gameState);
         await CreateOrModifyMessageAsync(embed, gameState);
@@ -159,67 +162,80 @@ public sealed class RoundStatusController : IBotController
         _lastGameState = gameState;
     }
     
-    private Embed MakeEmbed(Dictionary<string, string> responseData, int currentTime, GameState gameState)
+    private Embed MakeEmbed(ByondStatus status)
     {
-        EmbedBuilder embedBuilder = new EmbedBuilder();
-        switch (gameState)
+        return status.GameState switch
         {
-            case GameState.Startup:
-                embedBuilder.WithColor(Color.Orange)
-                            .WithTitle("Раунд")
-                            .WithDescription("Запуск сервера")
-                            .WithFooter(footer =>
-                            {
-                                footer.Text = "Сплетено пауком";
-                                footer.IconUrl = IconUrls.FooterIcon;
-                            })
-                            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
-                break;
-
-            case GameState.Lobby1:
-            case GameState.Lobby2:
-                embedBuilder.WithColor(Color.Blue)
-                            .WithTitle("Раунд")
-                            .WithDescription("Лобби")
-                            .WithFooter(footer =>
-                            {
-                                footer.Text = "Сплетено пауком";
-                                footer.IconUrl = IconUrls.FooterIcon;
-                            })
-                            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
-                break;
-
-            case GameState.InGame:
-                embedBuilder.WithColor(Color.Green)
-                            .WithTitle("Раунд")
-                            .WithDescription("Идёт раунд")
-                            .AddField("Количество игроков", $"{responseData["players"]} игрок(ов)", true)
-                            .AddField("Время раунда", TimeSpan.FromSeconds(currentTime).ToString(@"hh\:mm"), true)
-                            .WithFooter(footer =>
-                            {
-                                footer.Text = "Сплетено пауком";
-                                footer.IconUrl = IconUrls.FooterIcon;
-                            })
-                            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
-                break;
-
-            case GameState.EndGame:
-                embedBuilder.WithColor(Color.DarkMagenta)
-                            .WithTitle("Раунд")
-                            .WithDescription("Окончание раунда")
-                            .AddField("Раунд завершён", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), true)
-                            .WithFooter(footer =>
-                            {
-                                footer.Text = "Сплетено пауком";
-                                footer.IconUrl = IconUrls.FooterIcon;
-                            })
-                            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
-                break;
-
-            default:
-                throw new ArgumentException("Unknown game state");
-        }
-
-        return embedBuilder.Build();
+            GameState.Startup => MakeStartupEmbed(status),
+            GameState.Lobby1 => MakeLobbyEmbed(status),
+            GameState.Lobby2 => MakeLobbyEmbed(status),
+            GameState.InGame => MakeInGameEmbed(status),
+            GameState.EndGame => MakeEndGameEmbed(status),
+            _ => throw new ArgumentException("Unknown game state")
+        };
+    }
+    
+    private Embed MakeStartupEmbed(ByondStatus status)
+    {
+        return new EmbedBuilder()
+            .WithColor(Color.Orange)
+            .WithTitle("Запуск сервера")
+            .AddField("Id раунда", $"{status.RoundId}")
+            .WithFooter(footer =>
+            {
+                footer.Text = "Сплетено пауком";
+                footer.IconUrl = IconUrls.FooterIcon;
+            })
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
+            .Build();
+    }
+    
+    private Embed MakeLobbyEmbed(ByondStatus status)
+    {
+        return new EmbedBuilder()
+            .WithColor(Color.Blue)
+            .WithTitle("Лобби")
+            .AddField("Id раунда", $"{status.RoundId}")
+            .AddField("Количество игроков", $"{status.Players}")
+            .WithFooter(footer =>
+            {
+                footer.Text = "Сплетено пауком";
+                footer.IconUrl = IconUrls.FooterIcon;
+            })
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
+            .Build();
+    }
+    
+    private Embed MakeInGameEmbed(ByondStatus status)
+    {
+        return new EmbedBuilder()
+            .WithColor(Color.Green)
+            .WithTitle("Раунд")
+            .AddField("Id раунда", $"{status.RoundId}")
+            .AddField("Количество игроков", $"{status.Players} игрок(ов)")
+            .AddField("Время раунда", status.RoundDuration.ToString(@"hh\:mm"))
+            .WithFooter(footer =>
+            {
+                footer.Text = "Сплетено пауком";
+                footer.IconUrl = IconUrls.FooterIcon;
+            })
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
+            .Build();
+    }
+    
+    private Embed MakeEndGameEmbed(ByondStatus status)
+    {
+        return new EmbedBuilder()
+            .WithColor(Color.DarkMagenta)
+            .WithTitle("Окончание раунда")
+            .AddField("Раунд завершён", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))
+            .AddField("Id раунда", $"{status.RoundId}")
+            .WithFooter(footer =>
+            {
+                footer.Text = "Сплетено пауком";
+                footer.IconUrl = IconUrls.FooterIcon;
+            })
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
+            .Build();
     }
 }
