@@ -10,11 +10,11 @@ public sealed class ByondTopic
     private const byte ResponseFloat = 0x2A;
     
     /// <summary>
-    /// Отправляет запрос на указанный сервер с заданными аргументами.
+    /// Sends a request to the specified server with the given arguments.
     /// </summary>
-    /// <param name="address">IP-адрес или DNS сервера DreamDaemon.</param>
-    /// <param name="port">Порт, на котором сервер DreamDaemon обслуживает мир.</param>
-    /// <param name="args">Словарь аргументов для запроса.</param>
+    /// <param name="address">The IP address or DNS of the DreamDaemon server.</param>
+    /// <param name="port">The port on which the DreamDaemon server is hosting the world.</param>
+    /// <param name="args">A dictionary of arguments for the request.</param>
     public void Export(string address, int port, Dictionary<string, string> args)
     {
         string query = BuildQueryString(args);
@@ -22,12 +22,12 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Асинхронно отправляет пакет Topic() на сервер и возвращает ответ.
+    /// Asynchronously sends a Topic() packet to the server and returns the response.
     /// </summary>
-    /// <param name="address">IP-адрес или DNS сервера DreamDaemon.</param>
-    /// <param name="port">Порт сервера DreamDaemon.</param>
-    /// <param name="query">Строка запроса.</param>
-    /// <returns>Кортеж из типа ответа и данных.</returns>
+    /// <param name="address">The IP address or DNS of the DreamDaemon server.</param>
+    /// <param name="port">The DreamDaemon server port.</param>
+    /// <param name="query">The request string.</param>
+    /// <returns>A tuple containing the response type and the data.</returns>
     public async Task<(byte responseType, object data)> Send(string address, int port, string query)
     {
         if (string.IsNullOrEmpty(query) || query[0] != '?')
@@ -38,30 +38,30 @@ public sealed class ByondTopic
         int packetSize = Encoding.UTF8.GetByteCount(query) + 6;
         if (packetSize >= 65535)
         {
-            throw new Exception("Строка запроса слишком велика, превышен максимальный размер пакета.");
+            throw new Exception("The query string is too large, exceeding the maximum packet size.");
         }
 
-        // Создание пакета
-        byte[] packet = new byte[9 + Encoding.UTF8.GetByteCount(query) + 1]; // 9 байт заголовка + запрос + нуль-терминатор
+        // Create the packet
+        byte[] packet = new byte[9 + Encoding.UTF8.GetByteCount(query) + 1]; // 9 bytes for the header + query + null terminator
         int offset = 0;
 
-        // Построение заголовка
-        packet[offset++] = 0x00; // Байты заполнения
-        packet[offset++] = PacketId; // Идентификатор пакета
-        packet[offset++] = (byte)(packetSize >> 8); // Старший байт размера пакета
-        packet[offset++] = (byte)(packetSize & 0xFF); // Младший байт размера пакета
-        packet[offset++] = 0x00; // Байты заполнения (5 байт)
+        // Build the header
+        packet[offset++] = 0x00; // Padding bytes
+        packet[offset++] = PacketId; // Packet identifier
+        packet[offset++] = (byte)(packetSize >> 8); // High byte of packet size
+        packet[offset++] = (byte)(packetSize & 0xFF); // Low byte of packet size
+        packet[offset++] = 0x00; // Padding bytes (5 bytes total)
         packet[offset++] = 0x00;
         packet[offset++] = 0x00;
         packet[offset++] = 0x00;
         packet[offset++] = 0x00;
 
-        // Копирование строки запроса
+        // Copy the query string
         byte[] queryBytes = Encoding.UTF8.GetBytes(query);
         Array.Copy(queryBytes, 0, packet, offset, queryBytes.Length);
         offset += queryBytes.Length;
 
-        packet[offset++] = 0x00; // Нуль-терминатор
+        packet[offset++] = 0x00; // Null terminator
 
         using (var client = new TcpClient())
         {
@@ -71,15 +71,15 @@ public sealed class ByondTopic
                 await stream.WriteAsync(packet, 0, packet.Length);
                 await stream.FlushAsync();
 
-                // Чтение заголовка ответа
+                // Read the response header
                 byte[] recvHeader = new byte[5];
                 int bytesRead = await ReadExactAsync(stream, recvHeader, 0, 5);
                 if (bytesRead < 5)
                 {
-                    throw new Exception("Не удалось прочитать заголовок ответа.");
+                    throw new Exception("Failed to read the response header.");
                 }
 
-                // Разбор заголовка ответа
+                // Parse the response header
                 byte recvPacketId = recvHeader[1];
                 ushort contentLen = (ushort)((recvHeader[2] << 8) | recvHeader[3]);
                 byte responseType = recvHeader[4];
@@ -87,7 +87,7 @@ public sealed class ByondTopic
                 if (recvPacketId != PacketId)
                 {
                     client.Close();
-                    throw new Exception($"Неверный идентификатор пакета в ответе. Ожидалось 0x83, получено {recvPacketId}");
+                    throw new Exception($"Invalid packet identifier in response. Expected 0x83, got {recvPacketId}");
                 }
                 else
                 {
@@ -104,7 +104,7 @@ public sealed class ByondTopic
                     bytesRead = await ReadExactAsync(stream, response, 0, contentLen);
                     if (bytesRead < contentLen)
                     {
-                        throw new Exception($"Обрезанный ответ: {bytesRead} из {contentLen}");
+                        throw new Exception($"Truncated response: {bytesRead} of {contentLen}");
                     }
 
                     object data;
@@ -118,14 +118,14 @@ public sealed class ByondTopic
                     {
                         if (response.Length < 4)
                         {
-                            throw new Exception("Некорректная длина ответа с числом с плавающей точкой.");
+                            throw new Exception("Incorrect length of float response.");
                         }
                         float floatValue = BitConverter.ToSingle(response, 0);
                         data = floatValue;
                     }
                     else
                     {
-                        // Неизвестный тип ответа, возвращаем сырые данные
+                        // Unknown response type, return raw data
                         data = response;
                     }
 
@@ -137,11 +137,11 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Запрашивает статус сервера.
+    /// Requests the server status.
     /// </summary>
-    /// <param name="address">IP-адрес или DNS сервера DreamDaemon.</param>
-    /// <param name="port">Порт сервера DreamDaemon.</param>
-    /// <returns>Словарь с данными статуса сервера.</returns>
+    /// <param name="address">The IP address or DNS of the DreamDaemon server.</param>
+    /// <param name="port">The DreamDaemon server port.</param>
+    /// <returns>A dictionary containing the server status data.</returns>
     public async Task<Dictionary<string, string>?> QueryStatus(string address, int port)
     {
         var (responseType, data) = await Send(address, port, "?status");
@@ -156,11 +156,11 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Запрашивает количество игроков на сервере.
+    /// Requests the player count on the server.
     /// </summary>
-    /// <param name="address">IP-адрес или DNS сервера DreamDaemon.</param>
-    /// <param name="port">Порт сервера DreamDaemon.</param>
-    /// <returns>Количество игроков в виде строки.</returns>
+    /// <param name="address">The IP address or DNS of the DreamDaemon server.</param>
+    /// <param name="port">The DreamDaemon server port.</param>
+    /// <returns>The player count as a string.</returns>
     public async Task<string?> QueryPlayerCount(string address, int port)
     {
         var (responseType, data) = await Send(address, port, "?playing");
@@ -175,7 +175,7 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Асинхронно читает заданное количество байт из потока.
+    /// Asynchronously reads the specified number of bytes from the stream.
     /// </summary>
     private async Task<int> ReadExactAsync(NetworkStream stream, byte[] buffer, int offset, int count)
     {
@@ -187,7 +187,7 @@ public sealed class ByondTopic
                 int bytesRead = await stream.ReadAsync(buffer, offset + totalRead, count - totalRead, cts.Token);
                 if (bytesRead == 0)
                 {
-                    break; // Конец потока
+                    break; // End of stream
                 }
                 totalRead += bytesRead;
             }
@@ -196,7 +196,7 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Создает строку запроса из словаря аргументов.
+    /// Creates a query string from the dictionary of arguments.
     /// </summary>
     private string BuildQueryString(Dictionary<string, string> args)
     {
@@ -211,7 +211,7 @@ public sealed class ByondTopic
     }
 
     /// <summary>
-    /// Парсит строку запроса в словарь.
+    /// Parses the query string into a dictionary.
     /// </summary>
     private Dictionary<string, string> ParseQueryString(string query)
     {
