@@ -10,7 +10,7 @@ public enum GameState
     EndGame = 4
 }
 
-public static class GameStateExtensions
+public static class GameStateHelper
 {
     public static string ToFriendlyString(this GameState state)
     {
