@@ -36,7 +36,7 @@ Bot for managing discord server ss13(Rockhill)
 
 ### Installation
 
-Download the latest release from the [releases page]("https://github.com/InstantRemedy/ModularDiscordBot/releases/tag/v2.1.0")
+Download the latest release from the [releases page](https://github.com/InstantRemedy/ModularDiscordBot/releases/tag/v2.1.0)
 
 #### Windows
 
