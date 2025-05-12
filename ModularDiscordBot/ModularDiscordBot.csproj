@@ -6,6 +6,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>ModularDiscordBot</RootNamespace>
+
+        <ApplicationIcon>Icons/bot.ico</ApplicationIcon>
+        <Win32Icon>Icons/bot.ico</Win32Icon>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
