@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  modular-disocrd-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      tags:
+        - "rockhill/ds-bot:latest"
+    image: rockhill/ds-bot:latest
+    container_name: modular-disocrd-bot
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped

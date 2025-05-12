@@ -32,3 +32,87 @@ Bot for managing discord server ss13(Rockhill)
 - [rs_port]: Set the port for the round status.
 - [rs_add_allowed_role]: Add a role that can access the round status.
 - [rs_remove_allowed_role]: Remove a role that can access the round status.
+
+
+### Installation
+
+Download the latest release from the [releases page]("https://github.com/InstantRemedy/ModularDiscordBot/releases/tag/v2.1.0")
+
+#### Windows
+
+1. Unzip the win-x64 folder
+2. Open config folder and edit json config files
+3. Open the bot folder and run the ModularDiscordBot.exe file
+
+
+#### Linux (Ubuntu 24.04 LTS)
+
+##### Native
+1. Unzip the linux-x64 directory
+```bash
+# using 7z
+sudo apt install p7zip-full # if not installed
+7z x ModularDiscordBot.7z
+```
+
+2. Open the config folder and edit json config files
+```bash
+cd ModularDiscordBot/config
+```
+
+3. Edit the config files
+```bash
+# nano, vim, vi, etc.
+nano bot.json
+nano opopen-ai.json
+nano round-status.json
+cd ..
+```
+
+4. Copy the config files to app directory
+```bash
+cp -r config ./app
+```
+
+5. cd to the app directory
+```bash
+cd app
+```
+
+6. Change the chmod of the app directory
+```bash
+chmod +x ModularDiscordBot
+```
+
+7. Run the bot
+```bash
+./ModularDiscordBot
+```
+
+##### Docker
+
+1. Unzip the linux-x64 directory
+```bash
+# using 7z
+sudo apt install p7zip-full # if not installed
+7z x ModularDiscordBot.7z
+```
+
+2. Open the config folder and edit json config files
+```bash
+cd ModularDiscordBot
+```
+
+3. Edit the config files
+```bash
+# nano, vim, vi, etc.
+nano config/bot.json
+nano config/open-ai.json
+nano config/round-status.json
+```
+
+
+4. All directories and files are already located for docker, just run 
+```
+docker-compose up. # -d for detached mode
+```
