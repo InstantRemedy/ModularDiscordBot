@@ -1,22 +1,23 @@
-﻿using ModularDiscordBot.Configuration.Attributes;
+﻿using System.Text.Json.Serialization;
+using ModularDiscordBot.Configuration.Attributes;
 
 namespace ModularDiscordBot.Configuration.Configurations;
 
 [Configuration("round-status")]
-public sealed class RoundStatusConfiguration : Configuration
+public sealed class RoundStatusConfiguration
 {
-    [PropertyConfiguration("host")]
+    [JsonPropertyName("host")]
     public string Host { get; set; } = string.Empty;
     
-    [PropertyConfiguration("port")]
+    [JsonPropertyName("port")]
     public int Port { get; set; } = 0;
     
-    [PropertyConfiguration("channel_id")]
+    [JsonPropertyName("channel_id")]
     public ulong ChannelId { get; set; } = 0;
     
-    [PropertyConfiguration("main_role_id")]
+    [JsonPropertyName("main_role_id")]
     public ulong MainRoleId { get; set; } = 0;
     
-    [PropertyConfiguration("allowed_role_ids")]
+    [JsonPropertyName("allowed_role_ids")]
     public HashSet<ulong> AllowedRoleIds { get; set; } = new();
 }

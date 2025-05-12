@@ -1,13 +1,14 @@
-﻿using ModularDiscordBot.Configuration.Attributes;
+﻿using System.Text.Json.Serialization;
+using ModularDiscordBot.Configuration.Attributes;
 
 namespace ModularDiscordBot.Configuration.Configurations;
 
 [Configuration("bot")]
-public sealed class BotConfiguration : Configuration
+public sealed class BotConfiguration
 {
-    [PropertyConfiguration("token")]
+    [JsonPropertyName("token")]
     public string Token { get; set; } = string.Empty;
     
-    [PropertyConfiguration("command_prefix")]
+    [JsonPropertyName("command_prefix")]
     public string CommandPrefix { get; set; } = "!";
 }
