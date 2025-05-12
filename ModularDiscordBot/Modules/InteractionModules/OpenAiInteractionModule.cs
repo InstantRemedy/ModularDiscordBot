@@ -1,6 +1,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
+using ModularDiscordBot.Configuration;
 using ModularDiscordBot.Configuration.Configurations;
 using ModularDiscordBot.Controllers;
 using ModularDiscordBot.Structures;
@@ -10,20 +11,18 @@ namespace ModularDiscordBot.Modules.InteractionModules;
 
 public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly DiscordSocketClient _client;
     private readonly OpenAiController _openAiController;
-    private readonly OpenAiConfiguration _openAiConfiguration;
     private readonly ILogger<OpenAiInteractionModule> _logger;
+    private readonly OpenAiConfiguration _configuration;
     
     public OpenAiInteractionModule(
         DiscordSocketClient client,
         OpenAiController openAiController,
-        OpenAiConfiguration openAiConfiguration,
+        OpenAiConfiguration configuration,
         ILogger<OpenAiInteractionModule> logger)
     {
-        _client = client;
         _openAiController = openAiController;
-        _openAiConfiguration = openAiConfiguration;
+        _configuration = configuration;
         _logger = logger;
     }
     
@@ -36,8 +35,9 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
             return false;
         }
         
-        return user.Roles.Any(x => x.Id == _openAiConfiguration.MainRoleId) ||
-               user.Roles.Any(x => _openAiConfiguration.AllowedRoleIds.Contains(x.Id));
+        
+        return user.Roles.Any(x => x.Id == _configuration.MainRoleId) ||
+               user.Roles.Any(x => _configuration.AllowedRoleIds.Contains(x.Id));
     }
     
     [SlashCommand("openai_mode", "Set the mode for the OpenAI(steam/no_stream)")]
@@ -55,8 +55,8 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            _openAiConfiguration.Mode = mode.ToStreamString();
-            await _openAiConfiguration.SaveConfigurationAsync();
+            _configuration.Mode = mode.ToStreamString();
+            ConfigurationManager.Save(_configuration);
             
             await FollowupAsync($"Mode set: {mode}", ephemeral: true);
         }
@@ -88,20 +88,20 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            if (_openAiConfiguration.AllowedRoleIds.Contains(role.Id))
+            if (_configuration.AllowedRoleIds.Contains(role.Id))
             {
                 await FollowupAsync("Role already added", ephemeral: true);
                 return;
             }
             
-            if (role.Id == _openAiConfiguration.MainRoleId)
+            if (role.Id == _configuration.MainRoleId)
             {
                 await FollowupAsync("Role is the main role", ephemeral: true);
                 return;
             }
             
-            _openAiConfiguration.AllowedRoleIds.Add(role.Id);
-            await _openAiConfiguration.SaveConfigurationAsync();
+            _configuration.AllowedRoleIds.Add(role.Id);
+            ConfigurationManager.Save(_configuration);
             
             await FollowupAsync($"Role added: {role.Name}", ephemeral: true);
         }
@@ -133,20 +133,20 @@ public sealed class OpenAiInteractionModule : InteractionModuleBase<SocketIntera
                 return;
             }
             
-            if (!_openAiConfiguration.AllowedRoleIds.Contains(role.Id))
+            if (!_configuration.AllowedRoleIds.Contains(role.Id))
             {
                 await FollowupAsync("Role not contains", ephemeral: true);
                 return;
             }
             
-            if (role.Id == _openAiConfiguration.MainRoleId)
+            if (role.Id == _configuration.MainRoleId)
             {
                 await FollowupAsync("Role is the main role", ephemeral: true);
                 return;
             }
             
-            _openAiConfiguration.AllowedRoleIds.Remove(role.Id);
-            await _openAiConfiguration.SaveConfigurationAsync();
+            _configuration.AllowedRoleIds.Remove(role.Id);
+            ConfigurationManager.Save(_configuration);
             
             await FollowupAsync($"Role removed: {role.Name}", ephemeral: true);
         }

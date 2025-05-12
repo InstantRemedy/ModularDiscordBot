@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModularDiscordBot.Configuration.Configurations;
-using ModularDiscordBot.Configuration.Ioc;
+using ModularDiscordBot.Configuration.IoC;
 using ModularDiscordBot.Ioc;
 using ModularDiscordBot.Services;
 using OpenAI;
@@ -33,7 +33,8 @@ internal sealed class Program
                     .AddHostedService<CommandHandlingService>()
                     .AddHostedService<InteractionHandlingService>()
                     .AddHostedService<LoopHandlingService>()
-                    .AddConfigurations()
+                    .AddHostedService<ControllerHandlingService>()
+                    .AddConfiguration()
                     .AddControllers()
                     .AddHttpClient()
                     .AddSingleton<OpenAIClient>(provider =>
@@ -56,7 +57,6 @@ internal sealed class Program
                         MessageCacheSize = 200,
                         GatewayIntents = GatewayIntents.All
                     };
-                
                     config.Token = botConfig.Token;
                 });
 

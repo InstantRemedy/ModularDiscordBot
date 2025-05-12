@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
+using ModularDiscordBot.Configuration;
 using ModularDiscordBot.Configuration.Configurations;
 using ContextType = Discord.Commands.ContextType;
 
@@ -63,7 +64,8 @@ public sealed class RoundStatusInteractionModule : InteractionModuleBase<SocketI
             }
         
             _configuration.Host = host;
-            await _configuration.SaveConfigurationAsync();
+            ConfigurationManager.Save(_configuration);
+            
             await FollowupAsync($"Set host to {host}", ephemeral: true);
         }
         catch (Exception e)
@@ -95,7 +97,8 @@ public sealed class RoundStatusInteractionModule : InteractionModuleBase<SocketI
             }
         
             _configuration.Port = port;
-            await _configuration.SaveConfigurationAsync();
+            ConfigurationManager.Save(_configuration);
+            
             await FollowupAsync($"Set port to {port}", ephemeral:true);
         }
         catch (Exception e)
@@ -139,7 +142,8 @@ public sealed class RoundStatusInteractionModule : InteractionModuleBase<SocketI
             }
 
             _configuration.AllowedRoleIds.Add(role.Id);
-            await _configuration.SaveConfigurationAsync();
+            ConfigurationManager.Save(_configuration);
+            
             await FollowupAsync($"Added role {role.Name}", ephemeral:true);
         }
         catch (Exception e)
@@ -182,7 +186,8 @@ public sealed class RoundStatusInteractionModule : InteractionModuleBase<SocketI
             }
 
             _configuration.AllowedRoleIds.Remove(role.Id);
-            await _configuration.SaveConfigurationAsync();
+            ConfigurationManager.Save(_configuration);
+            
             await FollowupAsync($"Removed role {role.Name}", ephemeral:true);
         }
         catch (Exception e)

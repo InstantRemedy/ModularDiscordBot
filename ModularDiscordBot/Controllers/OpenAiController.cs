@@ -3,15 +3,15 @@ using Discord;
 using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
+using ModularDiscordBot.Configuration;
 using ModularDiscordBot.Configuration.Configurations;
-using ModularDiscordBot.Interfaces;
 using ModularDiscordBot.Structures;
 using Newtonsoft.Json.Linq;
 using OpenAI;
 
 namespace ModularDiscordBot.Controllers;
 
-public sealed class OpenAiController : IBotController
+public sealed class OpenAiController : ControllerBase
 {
     public uint MaxRequests { get; set; }
     public uint RequestAmount { get; set; }
@@ -31,18 +31,19 @@ public sealed class OpenAiController : IBotController
     
     private readonly DiscordSocketClient _client;
     private readonly OpenAIClient _openAiClient;
-    private readonly OpenAiConfiguration _openAiConfiguration;
+    private readonly OpenAiConfiguration _configuration;
     
     private IUserMessage? _currentMessage;
 
     public OpenAiController(
         DiscordSocketClient client,
         OpenAIClient openAiClient,
-        OpenAiConfiguration openAiConfiguration)
+        OpenAiConfiguration configuration) :
+        base(client)
     {
         _client = client;
         _openAiClient = openAiClient;
-        _openAiConfiguration = openAiConfiguration;
+        _configuration = configuration;
     }
     
     public async Task MindAsync(string prompt, SocketCommandContext context)
@@ -57,19 +58,23 @@ public sealed class OpenAiController : IBotController
         
         if (string.IsNullOrWhiteSpace(prompt))
         {
-            var assistant = await _openAiClient.AssistantsEndpoint.RetrieveAssistantAsync(_openAiConfiguration.AssistantId);
+            var assistant = await _openAiClient.AssistantsEndpoint
+                .RetrieveAssistantAsync(_configuration.AssistantId);
             var text = $"Привет! я {assistant.Name}. Чего бы {context.User.Username} хотел знать?";
             await context.Message.ReplyAsync(text);
             return;
         }
         
-        switch (StreamModeHelper.FromString(_openAiConfiguration.Mode))
+        switch (StreamModeHelper.FromString(_configuration.Mode))
         {
             case StreamMode.Stream:
             {
                 try
                 {
-                    await MindStreamAsync(prompt, context);
+                    var assistantId = _configuration.AssistantId;
+                    var threadId = _configuration.ThreadId;
+                    
+                    await MindStreamAsync(prompt, context, threadId, assistantId);
                 }
                 catch (Exception)
                 {
@@ -81,7 +86,10 @@ public sealed class OpenAiController : IBotController
             {
                 try
                 {
-                    await MindNoStreamAsync(prompt, context);
+                    var assistantId = _configuration.AssistantId;
+                    var threadId = _configuration.ThreadId;
+                    
+                    await MindNoStreamAsync(prompt, context, assistantId, threadId);
                 }
                 catch (Exception)
                 {
@@ -104,18 +112,22 @@ public sealed class OpenAiController : IBotController
     }
     
     #region MindStream
-    private async Task MindStreamAsync(string prompt, SocketCommandContext context)
+    private async Task MindStreamAsync(
+        string prompt, 
+        SocketCommandContext context, 
+        string threadId,
+        string assistantId)
     {
         var formattedPrompt = $"{context.User.Username}:{prompt}";
         _ = await _openAiClient.ThreadsEndpoint.CreateMessageAsync(
-            threadId: _openAiConfiguration.ThreadId,
+            threadId: threadId,
             message: new OpenAI.Threads.Message(formattedPrompt));
 
         using (var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)))
         {
             _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
-                threadId: _openAiConfiguration.ThreadId,
-                request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
+                threadId: threadId,
+                request: new OpenAI.Threads.CreateRunRequest(assistantId: assistantId),
                 streamEventHandler: async (sentEvent) => await HandleStreamResponse(sentEvent, context),
                 cancellationToken: cts.Token);
         }
@@ -166,11 +178,15 @@ public sealed class OpenAiController : IBotController
     #endregion
     
     #region MindNoSteam
-    private async Task MindNoStreamAsync(string prompt, SocketCommandContext context)
+    private async Task MindNoStreamAsync(
+        string prompt, 
+        SocketCommandContext context,
+        string threadId,
+        string assistantId)
     {
         var formattedPrompt = $"{context.User.Username}:{prompt}";
         _ = await _openAiClient.ThreadsEndpoint.CreateMessageAsync(
-            threadId: _openAiConfiguration.ThreadId,
+            threadId: threadId,
             message: new OpenAI.Threads.Message(formattedPrompt));
 
         var messageId = string.Empty;
@@ -178,8 +194,8 @@ public sealed class OpenAiController : IBotController
         using (var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)))
         {
             _ = await _openAiClient.ThreadsEndpoint.CreateRunAsync(
-                threadId: _openAiConfiguration.ThreadId,
-                request: new OpenAI.Threads.CreateRunRequest(assistantId: _openAiConfiguration.AssistantId),
+                threadId: threadId,
+                request: new OpenAI.Threads.CreateRunRequest(assistantId: assistantId),
                 streamEventHandler: serverSent =>
                 {
                     if(string.IsNullOrWhiteSpace(messageId))
@@ -193,7 +209,7 @@ public sealed class OpenAiController : IBotController
         
         var message = 
             await _openAiClient.ThreadsEndpoint.RetrieveMessageAsync(
-                threadId: _openAiConfiguration.ThreadId, 
+                threadId: threadId, 
                 messageId: messageId);
 
         var textContent = message.Content[0].Text as TextContent;
@@ -221,10 +237,11 @@ public sealed class OpenAiController : IBotController
 
     public async Task CreateNewThreadAsync(SocketInteractionContext context)
     {
-        await _openAiClient.ThreadsEndpoint.DeleteThreadAsync(_openAiConfiguration.ThreadId);
+        await _openAiClient.ThreadsEndpoint.DeleteThreadAsync(_configuration.ThreadId);
         var thread = await _openAiClient.ThreadsEndpoint.CreateThreadAsync();
-        _openAiConfiguration.ThreadId = thread.Id;
-        await _openAiConfiguration.SaveConfigurationAsync();
+        _configuration.ThreadId = thread.Id;
+        
+        ConfigurationManager.Save(_configuration);
     }
     
     public async Task Enbale()
@@ -264,4 +281,14 @@ public sealed class OpenAiController : IBotController
     }
     
     #endregion
+
+    public override Task OnInitialized()
+    {
+        return Task.CompletedTask;
+    }
+
+    public override Task OnShutdown()
+    {
+        return Task.CompletedTask;
+    }
 }

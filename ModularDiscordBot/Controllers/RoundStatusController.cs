@@ -5,13 +5,12 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
 using ModularDiscordBot.Configuration.Configurations;
 using ModularDiscordBot.Constants;
-using ModularDiscordBot.Interfaces;
 using ModularDiscordBot.Plugins;
 using ModularDiscordBot.Structures;
 
 namespace ModularDiscordBot.Controllers;
 
-public sealed class RoundStatusController : IBotController
+public sealed class RoundStatusController : ControllerBase
 {
     private readonly ILogger<RoundStatusController> _logger;
     private readonly RoundStatusConfiguration _configuration;
@@ -21,25 +20,18 @@ public sealed class RoundStatusController : IBotController
     private IUserMessage? _embedMessage;
     private IUserMessage? _newRoundMessage;
     private GameState _lastGameState = GameState.Unknown;
+    private ByondStatus? _lastStatus;
     private bool _isInitialized;
     private int _failedAttempts;
     
     public RoundStatusController(
         DiscordSocketClient client,
         ILogger<RoundStatusController> logger,
-        RoundStatusConfiguration configuration)
+        RoundStatusConfiguration configuration) :
+        base(client)
     {
         _logger = logger;
         _configuration = configuration;
-        
-        var channel = client.GetChannel(_configuration.ChannelId);
-        
-        if(channel is not ITextChannel textChannel)
-        {
-            throw new ArgumentException("Channel is not a text channel");
-        }
-        
-        _channel = textChannel;
     }
 
     public async Task CheckStatusAsync()
@@ -66,9 +58,9 @@ public sealed class RoundStatusController : IBotController
         var currentTime = int.Parse(roundDurationToken);
         var gameState = (GameState)Enum.Parse(typeof(GameState), gameStateToken, true);
 
-        var status = ByoundStatusHelper.FromQuery(data);
+        _lastStatus = ByoundStatusHelper.FromQuery(data);
         
-        var embed = MakeEmbed(status);
+        var embed = MakeEmbed(_lastStatus);
         
         LogState(currentTime, gameState);
         await CreateOrModifyMessageAsync(embed, gameState);
@@ -166,16 +158,16 @@ public sealed class RoundStatusController : IBotController
     {
         return status.GameState switch
         {
-            GameState.Startup => MakeStartupEmbed(status),
-            GameState.Lobby1 => MakeLobbyEmbed(status),
-            GameState.Lobby2 => MakeLobbyEmbed(status),
-            GameState.InGame => MakeInGameEmbed(status),
-            GameState.EndGame => MakeEndGameEmbed(status),
+            GameState.Startup => MakeStartupEmbed(status).Build(),
+            GameState.Lobby1 => MakeLobbyEmbed(status).Build(),
+            GameState.Lobby2 => MakeLobbyEmbed(status).Build(),
+            GameState.InGame => MakeInGameEmbed(status).Build(),
+            GameState.EndGame => MakeEndGameEmbed(status).Build(),
             _ => throw new ArgumentException("Unknown game state")
         };
     }
     
-    private Embed MakeStartupEmbed(ByondStatus status)
+    private EmbedBuilder MakeStartupEmbed(ByondStatus status)
     {
         return new EmbedBuilder()
             .WithColor(Color.Orange)
@@ -186,11 +178,10 @@ public sealed class RoundStatusController : IBotController
                 footer.Text = "Сплетено пауком";
                 footer.IconUrl = IconUrls.FooterIcon;
             })
-            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
-            .Build();
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
     }
     
-    private Embed MakeLobbyEmbed(ByondStatus status)
+    private EmbedBuilder MakeLobbyEmbed(ByondStatus status)
     {
         return new EmbedBuilder()
             .WithColor(Color.Blue)
@@ -202,11 +193,10 @@ public sealed class RoundStatusController : IBotController
                 footer.Text = "Сплетено пауком";
                 footer.IconUrl = IconUrls.FooterIcon;
             })
-            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
-            .Build();
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
     }
     
-    private Embed MakeInGameEmbed(ByondStatus status)
+    private EmbedBuilder MakeInGameEmbed(ByondStatus status)
     {
         return new EmbedBuilder()
             .WithColor(Color.Green)
@@ -219,11 +209,10 @@ public sealed class RoundStatusController : IBotController
                 footer.Text = "Сплетено пауком";
                 footer.IconUrl = IconUrls.FooterIcon;
             })
-            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
-            .Build();
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
     }
     
-    private Embed MakeEndGameEmbed(ByondStatus status)
+    private EmbedBuilder MakeEndGameEmbed(ByondStatus status)
     {
         return new EmbedBuilder()
             .WithColor(Color.DarkMagenta)
@@ -235,7 +224,63 @@ public sealed class RoundStatusController : IBotController
                 footer.Text = "Сплетено пауком";
                 footer.IconUrl = IconUrls.FooterIcon;
             })
-            .WithThumbnailUrl(IconUrls.ThumbnailIcon)
-            .Build();
+            .WithThumbnailUrl(IconUrls.ThumbnailIcon);
+    }
+
+    public override Task OnInitialized()
+    {
+        var channel = Client.GetChannel(_configuration.ChannelId);
+        
+        if(channel is not ITextChannel textChannel)
+        {
+            throw new ArgumentException("Channel is not a text channel");
+        }
+        
+        _channel = textChannel;
+        return Task.CompletedTask;
+    }
+
+    public override async Task OnShutdown()
+    {
+        if (!IsInitialized)
+        {
+            return;
+        }
+        
+        if (_embedMessage is not null && _lastStatus is not null)
+        {
+            EmbedBuilder? embedBuilder = null;
+            
+            switch (_lastGameState)
+            {
+                case GameState.Startup:
+                {
+                    embedBuilder = MakeStartupEmbed(_lastStatus);
+                    embedBuilder.WithColor(Color.DarkBlue);
+                    embedBuilder.WithTitle("Бот отключён. Последний статус: Запуск сервера");
+                }break;
+                case GameState.Lobby1:
+                case GameState.Lobby2:
+                {
+                    embedBuilder = MakeLobbyEmbed(_lastStatus);
+                    embedBuilder.WithColor(Color.DarkBlue);
+                    embedBuilder.WithTitle("Бот отключён. Последний статус: Лобби");
+                }break;
+                case GameState.InGame:
+                {
+                    embedBuilder = MakeInGameEmbed(_lastStatus);
+                    embedBuilder.WithColor(Color.DarkBlue);
+                    embedBuilder.WithTitle("Бот отключён. Последний статус: Раунд");
+                }break;
+            }
+            
+            if (embedBuilder is not null && _embedMessage is not null)
+            {
+                await _embedMessage.ModifyAsync(properties =>
+                {
+                    properties.Embed = embedBuilder.Build();
+                });
+            }
+        }
     }
 }
